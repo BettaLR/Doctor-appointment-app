@@ -52,67 +52,72 @@ class AppointmentsScreen extends StatelessWidget {
             itemCount: appointments.length,
             itemBuilder: (context, index) {
               final appointment = appointments[index];
-              return ListTile(
-                title: Text(
-                  '${appointment.doctorName} - ${appointment.specialty}',
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Inicio: ${appointment.startTime.toLocal()}'),
-                    Text('Fin: ${appointment.endTime.toLocal()}'),
-                    Text('Motivo: ${appointment.reason}'),
-                    Text('Estado: ${appointment.status}'),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () {
-                        // Navigate to edit screen
-                        Navigator.pushNamed(
-                          context,
-                          '/edit_appointment',
-                          arguments: appointment,
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () async {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Eliminar Cita'),
-                            content: const Text(
-                              '¿Estás seguro de que quieres eliminar esta cita?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancelar'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Eliminar'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true) {
-                          await FirebaseFirestore.instance
-                              .collection('appointments')
-                              .doc(appointment.id)
-                              .delete();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Cita eliminada')),
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  title: Text(
+                    '${appointment.doctorName} - ${appointment.specialty}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Inicio: ${appointment.startTime.toLocal()}'),
+                      Text('Fin: ${appointment.endTime.toLocal()}'),
+                      Text('Motivo: ${appointment.reason}'),
+                      Text('Estado: ${appointment.status}'),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          // Navigate to edit screen
+                          Navigator.pushNamed(
+                            context,
+                            '/edit_appointment',
+                            arguments: appointment,
                           );
-                        }
-                      },
-                    ),
-                  ],
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Eliminar Cita'),
+                              content: const Text(
+                                '¿Estás seguro de que quieres eliminar esta cita?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text('Cancelar'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Eliminar'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await FirebaseFirestore.instance
+                                .collection('appointments')
+                                .doc(appointment.id)
+                                .delete();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Cita eliminada')),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

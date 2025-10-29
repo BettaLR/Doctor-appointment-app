@@ -80,8 +80,10 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
+        initialRoute: '/login',
         routes: {
           '/login': (context) => const LoginPage(),
+          '/home': (context) => const NavigationScreen(),
           '/register': (context) => const RegisterScreen(),
           '/appointments': (context) => const AppointmentsScreen(),
           '/new_appointment': (context) => const NewAppointmentScreen(),
@@ -93,15 +95,6 @@ class MyApp extends StatelessWidget {
           '/privacy': (context) => const PrivacyScreen(),
           '/about': (context) => const AboutScreen(),
         },
-        home: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, state) {
-            if (state is AuthAuthenticated) {
-              return const NavigationScreen();
-            } else {
-              return const LoginPage();
-            }
-          },
-        ),
       ),
     );
   }

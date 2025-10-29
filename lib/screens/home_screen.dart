@@ -17,14 +17,35 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   String? _userName;
+  bool _isHoveringNewAppointment = false;
+  bool _isHoveringMyAppointments = false;
+  bool _isHoveringMedicalTips = false;
+  int? _hoveredDoctorIndex;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _animationController.forward();
     _loadUserName();
     _doctorsStream = DatabaseService().getDoctors();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserName() async {
@@ -59,120 +80,156 @@ class _HomePageState extends State<HomePage> {
       },
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text("Inicio"),
-          backgroundColor: Colors.white,
-          elevation: 1,
-          foregroundColor: Colors.black87,
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Welcome message with user name
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.medical_services,
-                      color: Colors.white,
-                      size: 32,
+        body: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome message with user name
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF93C5FD), Color(0xFF60A5FA)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "¡Hola, ${_userName ?? 'Usuario'}!",
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const Text(
-                            "Bienvenido a tu app de citas médicas",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.medical_services,
+                        color: Colors.white,
+                        size: 32,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Action cards
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/new_appointment');
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Column(
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.add, color: Colors.green, size: 28),
-                            SizedBox(height: 8),
                             Text(
-                              "Agendar una Cita",
+                              "¡Hola, ${_userName ?? 'Usuario'}!",
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Text(
+                              "Bienvenido a tu app de citas médicas",
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                color: Colors.white70,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Action cards
+                Row(
+                children: [
+                  Expanded(
+                    child: MouseRegion(
+                      onEnter: (_) =>
+                          setState(() => _isHoveringNewAppointment = true),
+                      onExit: (_) =>
+                          setState(() => _isHoveringNewAppointment = false),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/new_appointment');
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _isHoveringNewAppointment
+                                ? Colors.blue[100]
+                                : Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: _isHoveringNewAppointment
+                                ? [
+                                    const BoxShadow(
+                                      color: Colors.blue,
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: const Column(
+                            children: [
+                              Icon(Icons.add, color: Colors.blue, size: 28),
+                              SizedBox(height: 8),
+                              Text(
+                                "Agendar una Cita",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/appointments');
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Column(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: Colors.orange,
-                              size: 28,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              "Mis Citas",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                    child: MouseRegion(
+                      onEnter: (_) =>
+                          setState(() => _isHoveringMyAppointments = true),
+                      onExit: (_) =>
+                          setState(() => _isHoveringMyAppointments = false),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/appointments');
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _isHoveringMyAppointments
+                                ? Colors.blue[100]
+                                : Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: _isHoveringMyAppointments
+                                ? [
+                                    const BoxShadow(
+                                      color: Colors.blue,
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: const Column(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: Colors.blue,
+                                size: 28,
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                              SizedBox(height: 8),
+                              Text(
+                                "Mis Citas",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -181,32 +238,48 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 24),
               Center(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/medical_tips');
-                  },
-                  child: Container(
-                    width:
-                        MediaQuery.of(context).size.width *
-                        0.4, // 40% of screen width
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Column(
-                      children: [
-                        Icon(Icons.lightbulb, color: Colors.blue, size: 28),
-                        SizedBox(height: 8),
-                        Text(
-                          "Consejos Médicos",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isHoveringMedicalTips = true),
+                  onExit: (_) => setState(() => _isHoveringMedicalTips = false),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/medical_tips');
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width:
+                          MediaQuery.of(context).size.width *
+                          0.4, // 40% of screen width
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _isHoveringMedicalTips
+                            ? Colors.blue[100]
+                            : Colors.blue[50],
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: _isHoveringMedicalTips
+                            ? [
+                                const BoxShadow(
+                                  color: Colors.blue,
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(Icons.lightbulb, color: Colors.blue, size: 28),
+                          SizedBox(height: 8),
+                          Text(
+                            "Consejos Médicos",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -239,28 +312,60 @@ class _HomePageState extends State<HomePage> {
                     itemCount: doctors.length,
                     itemBuilder: (context, index) {
                       final doctor = doctors[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: const Icon(Icons.person, color: Colors.blue),
-                          title: Text(doctor.name),
-                          subtitle: Text(doctor.specialty),
-                          trailing: const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
+                      final isHovered = _hoveredDoctorIndex == index;
+                      return MouseRegion(
+                        onEnter: (_) =>
+                            setState(() => _hoveredDoctorIndex = index),
+                        onExit: (_) =>
+                            setState(() => _hoveredDoctorIndex = null),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: isHovered
+                                ? [
+                                    const BoxShadow(
+                                      color: Colors.blue,
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ]
+                                : [],
                           ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => NewAppointmentScreen(
-                                  selectedDoctorId: doctor.id,
-                                  selectedDoctorName: doctor.name,
-                                  selectedSpecialty: doctor.specialty,
-                                ),
+                          child: Card(
+                            elevation: isHovered ? 2 : 1,
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.person,
+                                color: isHovered
+                                    ? Colors.blue[800]
+                                    : Colors.blue,
                               ),
-                            );
-                          },
+                              title: Text(doctor.name),
+                              subtitle: Text(doctor.specialty),
+                              trailing: Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: isHovered
+                                    ? Colors.blue[800]
+                                    : Colors.grey,
+                              ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => NewAppointmentScreen(
+                                      selectedDoctorId: doctor.id,
+                                      selectedDoctorName: doctor.name,
+                                      selectedSpecialty: doctor.specialty,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ),
                       );
                     },
@@ -271,6 +376,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-    );
+    ));
   }
 }

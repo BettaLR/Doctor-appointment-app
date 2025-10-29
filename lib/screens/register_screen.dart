@@ -39,7 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Cuenta creada exitosamente")),
             );
-            // Navigation is handled by BlocBuilder in main.dart
+            Navigator.pushReplacementNamed(context, '/home');
           } else if (state is AuthError) {
             ScaffoldMessenger.of(
               context,

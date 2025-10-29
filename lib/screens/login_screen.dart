@@ -26,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Inicio de sesión exitoso")),
             );
-            // Navigation is handled by BlocBuilder in main.dart
+            Navigator.pushReplacementNamed(context, '/home');
           } else if (state is AuthError) {
             ScaffoldMessenger.of(
               context,

@@ -12,7 +12,7 @@ class MessagesScreen extends StatelessWidget {
         elevation: 1,
         foregroundColor: Colors.black87,
       ),
-      body: const Center(child: Text('Mensajes - Placeholder')),
+      body: const Center(child: Text('Mensajes - Proximamente ...')),
     );
   }
 }
