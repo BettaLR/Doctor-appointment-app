@@ -11,6 +11,7 @@ import 'screens/edit_appointment_screen.dart';
 import 'screens/medical_tips_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/about_screen.dart';
+import 'screens/dashboard_screen.dart';
 import 'models/appointment_model.dart';
 import 'services/database_service.dart';
 import 'blocs/auth_bloc.dart';
@@ -94,6 +95,7 @@ class MyApp extends StatelessWidget {
           '/medical_tips': (context) => const MedicalTipsScreen(),
           '/privacy': (context) => const PrivacyScreen(),
           '/about': (context) => const AboutScreen(),
+          '/dashboard': (context) => const DashboardScreen(),
         },
       ),
     );

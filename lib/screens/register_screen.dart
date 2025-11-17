@@ -6,6 +6,7 @@ import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
 import '../models/user_model.dart';
+import '../services/database_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  String _selectedRole = 'Paciente'; // Default role
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +31,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // Create user document in Firestore
             final user = FirebaseAuth.instance.currentUser;
             if (user != null) {
-              final userModel = UserModel(id: user.uid, email: user.email!);
+              final userModel = UserModel(
+                id: user.uid,
+                email: user.email!,
+                role: _selectedRole,
+              );
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.uid)
                   .set(userModel.toMap());
+
+              // If user is a doctor, add to doctors collection
+              if (_selectedRole == 'Médico') {
+                await DatabaseService().ensureDoctorExists(user.uid);
+              }
             }
 
             ScaffoldMessenger.of(context).showSnackBar(
@@ -106,6 +117,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return 'La contraseña debe tener al menos 6 caracteres';
                           }
                           return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _selectedRole,
+                        decoration: const InputDecoration(
+                          labelText: 'Rol',
+                          prefixIcon: Icon(Icons.person),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Paciente',
+                            child: Text('Paciente'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Médico',
+                            child: Text('Médico'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedRole = value!;
+                          });
                         },
                       ),
                       const SizedBox(height: 24),

@@ -5,6 +5,7 @@ class UserModel {
   final int? age;
   final String? birthplace;
   final String? conditions;
+  final String role; // 'Paciente' or 'Médico'
 
   UserModel({
     required this.id,
@@ -13,6 +14,7 @@ class UserModel {
     this.age,
     this.birthplace,
     this.conditions,
+    this.role = 'Paciente', // Default role
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {
@@ -23,6 +25,7 @@ class UserModel {
       age: data['age'],
       birthplace: data['birthplace'],
       conditions: data['conditions'],
+      role: data['role'] ?? 'Paciente',
     );
   }
 
@@ -33,6 +36,7 @@ class UserModel {
       'age': age,
       'birthplace': birthplace,
       'conditions': conditions,
+      'role': role,
     };
   }
 }

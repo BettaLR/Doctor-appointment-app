@@ -5,7 +5,6 @@ class AppointmentModel {
   final String doctorName;
   final String specialty;
   final DateTime startTime;
-  final DateTime endTime;
   final String reason;
   final String status; // e.g., 'pending', 'confirmed', 'completed'
 
@@ -16,7 +15,6 @@ class AppointmentModel {
     required this.doctorName,
     required this.specialty,
     required this.startTime,
-    required this.endTime,
     required this.reason,
     required this.status,
   });
@@ -29,7 +27,6 @@ class AppointmentModel {
       doctorName: data['doctorName'] ?? '',
       specialty: data['specialty'] ?? '',
       startTime: DateTime.parse(data['startTime']),
-      endTime: DateTime.parse(data['endTime']),
       reason: data['reason'] ?? '',
       status: data['status'] ?? 'pending',
     );
@@ -42,7 +39,6 @@ class AppointmentModel {
       'doctorName': doctorName,
       'specialty': specialty,
       'startTime': startTime.toIso8601String(),
-      'endTime': endTime.toIso8601String(),
       'reason': reason,
       'status': status,
     };

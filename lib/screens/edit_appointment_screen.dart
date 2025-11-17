@@ -14,7 +14,6 @@ class EditAppointmentScreen extends StatefulWidget {
 
 class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
   late DateTime? _selectedStartTime;
-  late DateTime? _selectedEndTime;
   late String _reason;
   bool _isLoading = false;
 
@@ -22,7 +21,6 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
   void initState() {
     super.initState();
     _selectedStartTime = widget.appointment.startTime;
-    _selectedEndTime = widget.appointment.endTime;
     _reason = widget.appointment.reason;
   }
 
@@ -56,51 +54,9 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
     }
   }
 
-  Future<void> _selectEndTime() async {
-    if (_selectedStartTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona primero la hora de inicio')),
-      );
-      return;
-    }
-
-    final TimeOfDay? pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        _selectedEndTime ?? _selectedStartTime!.add(const Duration(hours: 1)),
-      ),
-    );
-
-    if (pickedTime != null) {
-      final endTime = DateTime(
-        _selectedStartTime!.year,
-        _selectedStartTime!.month,
-        _selectedStartTime!.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      );
-
-      if (endTime.isBefore(_selectedStartTime!)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'La hora de fin debe ser después de la hora de inicio',
-            ),
-          ),
-        );
-        return;
-      }
-
-      setState(() {
-        _selectedEndTime = endTime;
-      });
-    }
-  }
-
   Future<bool> _checkOverlap() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _selectedStartTime == null || _selectedEndTime == null)
-      return false;
+    if (user == null || _selectedStartTime == null) return false;
 
     final querySnapshot = await FirebaseFirestore.instance
         .collection('appointments')
@@ -110,8 +66,7 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
     for (var doc in querySnapshot.docs) {
       if (doc.id == widget.appointment.id) continue; // Skip current appointment
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isBefore(_selectedEndTime!) &&
-          existingAppointment.endTime.isAfter(_selectedStartTime!)) {
+      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!)) {
         return true;
       }
     }
@@ -119,9 +74,7 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
   }
 
   Future<void> _updateAppointment() async {
-    if (_selectedStartTime == null ||
-        _selectedEndTime == null ||
-        _reason.isEmpty) {
+    if (_selectedStartTime == null || _reason.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Completa todos los campos')),
       );
@@ -144,7 +97,6 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
       doctorName: widget.appointment.doctorName,
       specialty: widget.appointment.specialty,
       startTime: _selectedStartTime!,
-      endTime: _selectedEndTime!,
       reason: _reason,
       status: widget.appointment.status,
     );
@@ -191,11 +143,7 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
               onPressed: _selectStartTime,
               child: Text('Inicio: ${_selectedStartTime!.toLocal()}'),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _selectEndTime,
-              child: Text('Fin: ${_selectedEndTime!.toLocal()}'),
-            ),
+
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _isLoading ? null : _updateAppointment,
