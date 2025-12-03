@@ -80,6 +80,9 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
       return false;
     }
 
+    final newStart = _selectedStartTime!;
+    final newEnd = newStart.add(const Duration(minutes: 20));
+
     // 1. Check if USER has an appointment at the same time
     final userQuery = await FirebaseFirestore.instance
         .collection('appointments')
@@ -88,8 +91,13 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
 
     for (var doc in userQuery.docs) {
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
-          existingAppointment.status != 'cancelled') {
+      if (existingAppointment.status == 'cancelled') continue;
+
+      final existingStart = existingAppointment.startTime;
+      final existingEnd = existingStart.add(const Duration(minutes: 20));
+
+      // Check for overlap: (StartA < EndB) and (StartB < EndA)
+      if (newStart.isBefore(existingEnd) && existingStart.isBefore(newEnd)) {
         return true;
       }
     }
@@ -102,8 +110,13 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
 
     for (var doc in doctorQuery.docs) {
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
-          existingAppointment.status != 'cancelled') {
+      if (existingAppointment.status == 'cancelled') continue;
+
+      final existingStart = existingAppointment.startTime;
+      final existingEnd = existingStart.add(const Duration(minutes: 20));
+
+      // Check for overlap
+      if (newStart.isBefore(existingEnd) && existingStart.isBefore(newEnd)) {
         return true;
       }
     }

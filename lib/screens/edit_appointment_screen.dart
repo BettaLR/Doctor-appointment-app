@@ -61,6 +61,9 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _selectedStartTime == null) return false;
 
+    final newStart = _selectedStartTime!;
+    final newEnd = newStart.add(const Duration(minutes: 20));
+
     // 1. Check if USER has an appointment at the same time
     final userQuery = await FirebaseFirestore.instance
         .collection('appointments')
@@ -69,9 +72,15 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
 
     for (var doc in userQuery.docs) {
       if (doc.id == widget.appointment.id) continue; // Skip current appointment
+
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
-          existingAppointment.status != 'cancelled') {
+      if (existingAppointment.status == 'cancelled') continue;
+
+      final existingStart = existingAppointment.startTime;
+      final existingEnd = existingStart.add(const Duration(minutes: 20));
+
+      // Check for overlap: (StartA < EndB) and (StartB < EndA)
+      if (newStart.isBefore(existingEnd) && existingStart.isBefore(newEnd)) {
         return true;
       }
     }
@@ -84,9 +93,15 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
 
     for (var doc in doctorQuery.docs) {
       if (doc.id == widget.appointment.id) continue; // Skip current appointment
+
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
-          existingAppointment.status != 'cancelled') {
+      if (existingAppointment.status == 'cancelled') continue;
+
+      final existingStart = existingAppointment.startTime;
+      final existingEnd = existingStart.add(const Duration(minutes: 20));
+
+      // Check for overlap
+      if (newStart.isBefore(existingEnd) && existingStart.isBefore(newEnd)) {
         return true;
       }
     }
