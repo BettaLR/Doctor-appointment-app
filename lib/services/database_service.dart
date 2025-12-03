@@ -52,7 +52,7 @@ class DatabaseService {
           // Create doctor entry with basic info, specialty can be updated later
           final doctor = DoctorModel(
             id: userId,
-            name: userModel.name ?? userModel.email ?? 'Doctor',
+            name: userModel.name ?? userModel.email,
             specialty: 'General', // Default specialty
           );
           await addDoctor(doctor);
@@ -119,5 +119,53 @@ class DatabaseService {
       return UserModel.fromMap(doc.data()!, doc.id);
     }
     return null;
+  }
+
+  // Get appointments per month for a doctor
+  Future<Map<String, int>> getAppointmentsPerMonth(String doctorId) async {
+    final snapshot = await _firestore
+        .collection('appointments')
+        .where('doctorId', isEqualTo: doctorId)
+        .get();
+    Map<String, int> monthlyCounts = {};
+    for (var doc in snapshot.docs) {
+      final appointment = AppointmentModel.fromMap(doc.data(), doc.id);
+      final monthKey =
+          '${appointment.startTime.year}-${appointment.startTime.month.toString().padLeft(2, '0')}';
+      monthlyCounts[monthKey] = (monthlyCounts[monthKey] ?? 0) + 1;
+    }
+    return monthlyCounts;
+  }
+
+  // Get completed vs canceled appointments for a doctor
+  Future<Map<String, int>> getCompletedVsCanceled(String doctorId) async {
+    final snapshot = await _firestore
+        .collection('appointments')
+        .where('doctorId', isEqualTo: doctorId)
+        .get();
+    int completed = 0;
+    int canceled = 0;
+    for (var doc in snapshot.docs) {
+      final status = doc['status'] as String;
+      if (status == 'completed') {
+        completed++;
+      } else if (status == 'canceled') {
+        canceled++;
+      }
+    }
+    return {'completed': completed, 'canceled': canceled};
+  }
+
+  // Get patients per doctor (all doctors)
+  Future<Map<String, int>> getPatientsPerDoctor() async {
+    final snapshot = await _firestore.collection('appointments').get();
+    Map<String, Set<String>> doctorPatients = {};
+    for (var doc in snapshot.docs) {
+      final doctorId = doc['doctorId'] as String;
+      final userId = doc['userId'] as String;
+      doctorPatients[doctorId] ??= {};
+      doctorPatients[doctorId]!.add(userId);
+    }
+    return doctorPatients.map((key, value) => MapEntry(key, value.length));
   }
 }

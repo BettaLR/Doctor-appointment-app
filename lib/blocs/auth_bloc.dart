@@ -14,11 +14,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Escuchar cambios en el estado de autenticación
     _auth.authStateChanges().listen((User? user) {
-      if (user != null) {
-        add(AuthCheckRequested());
-      } else {
-        emit(AuthUnauthenticated());
-      }
+      add(AuthCheckRequested());
     });
   }
 

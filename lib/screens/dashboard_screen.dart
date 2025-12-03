@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/database_service.dart';
@@ -43,52 +44,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard Médico')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Resumen de Actividad',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildIndicatorCard(
-                    title: 'Total de Citas',
-                    value: _totalAppointments.toString(),
-                    icon: Icons.calendar_today,
-                    color: Colors.blue,
-                  ),
-                  _buildIndicatorCard(
-                    title: 'Citas Pendientes',
-                    value: _pendingAppointments.toString(),
-                    icon: Icons.schedule,
-                    color: Colors.orange,
-                  ),
-                  _buildIndicatorCard(
-                    title: 'Total de Pacientes',
-                    value: _totalPatients.toString(),
-                    icon: Icons.people,
-                    color: Colors.green,
-                  ),
-                  _buildIndicatorCard(
-                    title: 'Citas Hoy',
-                    value: '0', // Placeholder, can be implemented later
-                    icon: Icons.today,
-                    color: Colors.purple,
-                  ),
-                ],
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Dashboard Médico'),
+        backgroundColor: CupertinoColors.white,
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Resumen de Actividad',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: CupertinoColors.black,
+                  inherit: false,
+                  fontFamily: '.SF Pro Display',
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  children: [
+                    _buildIndicatorCard(
+                      title: 'Total de Citas',
+                      value: _totalAppointments.toString(),
+                      icon: CupertinoIcons.calendar,
+                      color: CupertinoColors.activeBlue,
+                    ),
+                    _buildIndicatorCard(
+                      title: 'Citas Pendientes',
+                      value: _pendingAppointments.toString(),
+                      icon: CupertinoIcons.time,
+                      color: CupertinoColors.activeOrange,
+                    ),
+                    _buildIndicatorCard(
+                      title: 'Total de Pacientes',
+                      value: _totalPatients.toString(),
+                      icon: CupertinoIcons.person_2,
+                      color: CupertinoColors.activeGreen,
+                    ),
+                    _buildIndicatorCard(
+                      title: 'Citas Hoy',
+                      value: '0', // Placeholder, can be implemented later
+                      icon: CupertinoIcons.today,
+                      color: CupertinoColors.systemPurple,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -100,8 +113,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required IconData icon,
     required Color color,
   }) {
-    return Card(
-      elevation: 4,
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -115,12 +138,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: color,
+                inherit: false,
+                fontFamily: '.SF Pro Display',
               ),
             ),
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(
+                fontSize: 16,
+                color: CupertinoColors.black,
+                inherit: false,
+                fontFamily: '.SF Pro Text',
+              ),
               textAlign: TextAlign.center,
             ),
           ],

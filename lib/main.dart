@@ -12,10 +12,11 @@ import 'screens/medical_tips_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/about_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/settings_screen.dart'; // Import SettingsScreen
 import 'models/appointment_model.dart';
 import 'services/database_service.dart';
 import 'blocs/auth_bloc.dart';
-import 'blocs/auth_state.dart';
+
 import 'blocs/auth_event.dart';
 
 void main() async {
@@ -23,9 +24,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize doctors in Firestore
-  final databaseService = DatabaseService();
-  await databaseService.initializeDoctors();
+  // Initialize doctors in Firestore (fire and forget)
+  // Initialize doctors in Firestore (fire and forget)
+  try {
+    final databaseService = DatabaseService();
+    databaseService.initializeDoctors();
+  } catch (e) {
+    debugPrint('Error initializing doctors: $e');
+  }
 
   runApp(const MyApp());
 }
@@ -46,7 +52,7 @@ class MyApp extends StatelessWidget {
 
           // Esquema de color basado en tu azul principal
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF3B82F6),
+            seedColor: const Color(0xFF88D8B0),
             brightness: Brightness.light,
           ),
 
@@ -96,6 +102,8 @@ class MyApp extends StatelessWidget {
           '/privacy': (context) => const PrivacyScreen(),
           '/about': (context) => const AboutScreen(),
           '/dashboard': (context) => const DashboardScreen(),
+          '/settings': (context) =>
+              const SettingsScreen(), // Add settings route
         },
       ),
     );

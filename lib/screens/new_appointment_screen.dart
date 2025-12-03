@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/appointment_model.dart';
-import '../models/doctor_availability_model.dart';
+import '../models/doctor_model.dart';
+import '../services/database_service.dart';
 
 class NewAppointmentScreen extends StatefulWidget {
   final String? selectedDoctorId;
@@ -25,16 +26,10 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
   String? _selectedDoctorName;
   String? _selectedSpecialty;
   DateTime? _selectedStartTime;
-  String _reason = '';
+  final TextEditingController _reasonController = TextEditingController();
   bool _isLoading = false;
 
-  final List<Map<String, String>> _specialists = [
-    {'id': '1', 'name': 'Dr. Juan Pérez', 'specialty': 'Cardiología'},
-    {'id': '2', 'name': 'Dra. María García', 'specialty': 'Dermatología'},
-    {'id': '3', 'name': 'Dr. Carlos López', 'specialty': 'Neurología'},
-    {'id': '4', 'name': 'Dra. Ana Rodríguez', 'specialty': 'Pediatría'},
-    {'id': '5', 'name': 'Dr. Luis Martínez', 'specialty': 'Oftalmología'},
-  ];
+  final DatabaseService _databaseService = DatabaseService();
 
   @override
   void initState() {
@@ -44,66 +39,88 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
     _selectedSpecialty = widget.selectedSpecialty;
   }
 
-  Future<void> _selectStartTime() async {
-    final DateTime? pickedDate = await showDatePicker(
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  void _showDatePicker() {
+    showCupertinoModalPopup(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
+      builder: (BuildContext context) => Container(
+        height: 216,
+        padding: const EdgeInsets.only(top: 6.0),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        child: SafeArea(
+          top: false,
+          child: CupertinoDatePicker(
+            initialDateTime: _selectedStartTime ?? DateTime.now(),
+            mode: CupertinoDatePickerMode.dateAndTime,
+            use24hFormat: true,
+            onDateTimeChanged: (DateTime newDate) {
+              setState(() {
+                _selectedStartTime = newDate;
+              });
+            },
+          ),
+        ),
+      ),
     );
-
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
-
-      if (pickedTime != null) {
-        setState(() {
-          _selectedStartTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-        });
-      }
-    }
   }
 
   Future<bool> _checkOverlap() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _selectedStartTime == null) return false;
+    if (user == null ||
+        _selectedStartTime == null ||
+        _selectedDoctorId == null) {
+      return false;
+    }
 
-    final querySnapshot = await FirebaseFirestore.instance
+    // 1. Check if USER has an appointment at the same time
+    final userQuery = await FirebaseFirestore.instance
         .collection('appointments')
         .where('userId', isEqualTo: user.uid)
         .get();
 
-    for (var doc in querySnapshot.docs) {
+    for (var doc in userQuery.docs) {
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!)) {
+      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
+          existingAppointment.status != 'cancelled') {
         return true;
       }
     }
+
+    // 2. Check if DOCTOR has an appointment at the same time
+    final doctorQuery = await FirebaseFirestore.instance
+        .collection('appointments')
+        .where('doctorId', isEqualTo: _selectedDoctorId)
+        .get();
+
+    for (var doc in doctorQuery.docs) {
+      final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
+      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
+          existingAppointment.status != 'cancelled') {
+        return true;
+      }
+    }
+
     return false;
   }
 
   Future<void> _bookAppointment() async {
     if (_selectedDoctorId == null ||
         _selectedStartTime == null ||
-        _reason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa todos los campos')),
-      );
+        _reasonController.text.isEmpty) {
+      _showErrorDialog('Completa todos los campos');
       return;
     }
 
     if (await _checkOverlap()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hay un conflicto con otra cita')),
-      );
+      _showErrorDialog('Hay un conflicto con otra cita');
       return;
     }
 
@@ -118,7 +135,7 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
         doctorName: _selectedDoctorName!,
         specialty: _selectedSpecialty!,
         startTime: _selectedStartTime!,
-        reason: _reason,
+        reason: _reasonController.text,
         status: 'pending',
       );
 
@@ -126,79 +143,187 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
           .collection('appointments')
           .add(appointment.toMap());
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cita agendada')));
-
-      Navigator.pop(context);
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Éxito'),
+            content: const Text('Cita agendada'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context); // Go back
+                },
+              ),
+            ],
+          ),
+        );
+      }
     }
 
     setState(() => _isLoading = false);
   }
 
+  void _showErrorDialog(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nueva Cita'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        foregroundColor: Colors.black87,
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Nueva Cita'),
+        backgroundColor: CupertinoColors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            if (_selectedDoctorId == null) ...[
-              const Text('Selecciona un especialista:'),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _specialists.length,
-                  itemBuilder: (context, index) {
-                    final specialist = _specialists[index];
-                    return ListTile(
-                      title: Text(specialist['name']!),
-                      subtitle: Text(specialist['specialty']!),
-                      onTap: () {
-                        setState(() {
-                          _selectedDoctorId = specialist['id'];
-                          _selectedDoctorName = specialist['name'];
-                          _selectedSpecialty = specialist['specialty'];
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            ] else ...[
-              Text('Doctor: $_selectedDoctorName'),
-              Text('Especialidad: $_selectedSpecialty'),
-              const SizedBox(height: 20),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Motivo de la consulta',
-                ),
-                onChanged: (value) => _reason = value,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _selectStartTime,
-                child: Text(
-                  _selectedStartTime == null
-                      ? 'Seleccionar Hora de Inicio'
-                      : 'Inicio: ${_selectedStartTime!.toLocal()}',
-                ),
-              ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _selectedDoctorId == null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        'Selecciona un especialista:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: CupertinoColors.black,
+                          inherit: false,
+                          fontFamily: '.SF Pro Display',
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: StreamBuilder<List<DoctorModel>>(
+                        stream: _databaseService.getDoctors(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return const Center(
+                              child: Text('Error al cargar doctores'),
+                            );
+                          }
 
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _bookAppointment,
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Agendar Cita'),
-              ),
-            ],
-          ],
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CupertinoActivityIndicator(),
+                            );
+                          }
+
+                          final doctors = snapshot.data ?? [];
+
+                          if (doctors.isEmpty) {
+                            return const Center(
+                              child: Text('No hay doctores disponibles'),
+                            );
+                          }
+
+                          return CupertinoListSection.insetGrouped(
+                            children: doctors.map((doctor) {
+                              return CupertinoListTile(
+                                leading: const Icon(
+                                  CupertinoIcons.person_fill,
+                                  color: CupertinoColors.activeBlue,
+                                ),
+                                title: Text(doctor.name),
+                                subtitle: Text(doctor.specialty),
+                                trailing: const Icon(
+                                  CupertinoIcons.chevron_right,
+                                  color: CupertinoColors.systemGrey3,
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedDoctorId = doctor.id;
+                                    _selectedDoctorName = doctor.name;
+                                    _selectedSpecialty = doctor.specialty;
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  children: [
+                    CupertinoListSection.insetGrouped(
+                      header: const Text('Detalles de la Cita'),
+                      children: [
+                        CupertinoListTile(
+                          title: const Text('Doctor'),
+                          subtitle: Text(_selectedDoctorName!),
+                          leading: const Icon(CupertinoIcons.person_fill),
+                        ),
+                        CupertinoListTile(
+                          title: const Text('Especialidad'),
+                          subtitle: Text(_selectedSpecialty!),
+                          leading: const Icon(CupertinoIcons.star_fill),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    CupertinoTextField(
+                      controller: _reasonController,
+                      placeholder: 'Motivo de la consulta',
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.white,
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    CupertinoButton(
+                      color: CupertinoColors.white,
+                      onPressed: _showDatePicker,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Fecha y Hora',
+                            style: TextStyle(color: CupertinoColors.black),
+                          ),
+                          Text(
+                            _selectedStartTime != null
+                                ? '${_selectedStartTime!.day}/${_selectedStartTime!.month}/${_selectedStartTime!.year} ${_selectedStartTime!.hour}:${_selectedStartTime!.minute.toString().padLeft(2, '0')}'
+                                : 'Seleccionar',
+                            style: const TextStyle(
+                              color: CupertinoColors.systemGrey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton.filled(
+                        onPressed: _isLoading ? null : _bookAppointment,
+                        child: _isLoading
+                            ? const CupertinoActivityIndicator()
+                            : const Text('Agendar Cita'),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );

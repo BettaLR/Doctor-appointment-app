@@ -42,7 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ageController.text = userModel.age?.toString() ?? '';
         _birthplaceController.text = userModel.birthplace ?? '';
         _conditionsController.text = userModel.conditions ?? '';
-        _selectedRole = userModel.role;
+        setState(() {
+          _selectedRole = userModel.role;
+        });
       }
     }
   }
@@ -97,19 +99,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Reload user data to update UI
       await _loadUserData();
 
-      showCupertinoDialog(
-        context: context,
-        builder: (context) => CupertinoAlertDialog(
-          title: const Text('Éxito'),
-          content: const Text('Perfil actualizado'),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('OK'),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      );
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Éxito'),
+            content: const Text('Perfil actualizado'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
     }
 
     setState(() => _isLoading = false);
@@ -118,148 +122,162 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
       navigationBar: const CupertinoNavigationBar(
         middle: Text('Perfil'),
         backgroundColor: CupertinoColors.white,
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              children: [
-                CupertinoListSection(
-                  header: Text('Información Personal'),
-                  children: [],
-                ),
-                CupertinoTextField(
-                  controller: _nameController,
-                  placeholder: 'Nombre',
-                  padding: const EdgeInsets.all(12.0),
-                ),
-                const SizedBox(height: 10),
-                CupertinoTextField(
-                  controller: _ageController,
-                  placeholder: 'Edad',
-                  keyboardType: TextInputType.number,
-                  padding: const EdgeInsets.all(12.0),
-                ),
-                const SizedBox(height: 10),
-                CupertinoTextField(
-                  controller: _birthplaceController,
-                  placeholder: 'Lugar de nacimiento',
-                  padding: const EdgeInsets.all(12.0),
-                ),
-                const SizedBox(height: 10),
-                CupertinoTextField(
-                  controller: _conditionsController,
-                  placeholder: 'Condiciones médicas',
-                  padding: const EdgeInsets.all(12.0),
-                ),
-                const SizedBox(height: 20),
-                CupertinoListSection(
-                  header: Text('Configuraciones'),
-                  children: [],
-                ),
-                CupertinoListTile(
-                  title: const Text('Notificaciones'),
-                  trailing: CupertinoSwitch(
-                    value: _notificationsEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationsEnabled = value;
-                      });
-                    },
-                  ),
-                ),
-                CupertinoListTile(
-                  title: const Text('Rol'),
-                  subtitle: Text(_selectedRole),
-                  trailing: const Icon(CupertinoIcons.chevron_right),
-                  onTap: () {
-                    showCupertinoModalPopup(
-                      context: context,
-                      builder: (context) => CupertinoActionSheet(
-                        title: const Text('Seleccionar Rol'),
-                        actions: [
-                          CupertinoActionSheetAction(
-                            onPressed: () {
-                              setState(() {
-                                _selectedRole = 'Paciente';
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Paciente'),
-                          ),
-                          CupertinoActionSheetAction(
-                            onPressed: () {
-                              setState(() {
-                                _selectedRole = 'Médico';
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Médico'),
-                          ),
-                        ],
-                        cancelButton: CupertinoActionSheetAction(
-                          onPressed: () => Navigator.pop(context),
-                          isDestructiveAction: true,
-                          child: const Text('Cancelar'),
-                        ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              CupertinoListSection.insetGrouped(
+                header: const Text('Información Personal'),
+                children: [
+                  CupertinoFormRow(
+                    prefix: const Text('Nombre'),
+                    child: CupertinoTextField(
+                      controller: _nameController,
+                      placeholder: 'Nombre',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6.0,
+                        vertical: 12.0,
                       ),
-                    );
-                  },
-                ),
-                CupertinoListTile(
-                  title: const Text('Tamaño de fuente'),
-                  trailing: CupertinoSlider(
-                    value: _fontSize,
-                    min: 12.0,
-                    max: 24.0,
-                    onChanged: (value) {
-                      setState(() {
-                        _fontSize = value;
-                      });
-                    },
+                      decoration: null,
+                      textAlign: TextAlign.end,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                CupertinoButton.filled(
-                  onPressed: _isLoading ? null : _saveProfile,
-                  child: _isLoading
-                      ? const CupertinoActivityIndicator()
-                      : const Text('Guardar'),
-                ),
-                const SizedBox(height: 10),
-                CupertinoButton(
-                  onPressed: () {
-                    showCupertinoModalPopup(
-                      context: context,
-                      builder: (context) => CupertinoActionSheet(
-                        title: const Text('Opciones'),
-                        actions: [
-                          CupertinoActionSheetAction(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Editar Foto'),
-                          ),
-                          CupertinoActionSheetAction(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cambiar Contraseña'),
-                          ),
-                        ],
-                        cancelButton: CupertinoActionSheetAction(
-                          onPressed: () => Navigator.pop(context),
-                          isDestructiveAction: true,
-                          child: const Text('Cancelar'),
-                        ),
+                  CupertinoFormRow(
+                    prefix: const Text('Edad'),
+                    child: CupertinoTextField(
+                      controller: _ageController,
+                      placeholder: 'Edad',
+                      keyboardType: TextInputType.number,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6.0,
+                        vertical: 12.0,
                       ),
-                    );
-                  },
-                  child: const Text('Más Opciones'),
+                      decoration: null,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                  CupertinoFormRow(
+                    prefix: const Text('Lugar'),
+                    child: CupertinoTextField(
+                      controller: _birthplaceController,
+                      placeholder: 'Lugar de nacimiento',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6.0,
+                        vertical: 12.0,
+                      ),
+                      decoration: null,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                  CupertinoFormRow(
+                    prefix: const Text('Condiciones'),
+                    child: CupertinoTextField(
+                      controller: _conditionsController,
+                      placeholder: 'Condiciones médicas',
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6.0,
+                        vertical: 12.0,
+                      ),
+                      decoration: null,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ],
+              ),
+              CupertinoListSection.insetGrouped(
+                header: const Text('Configuraciones'),
+                children: [
+                  CupertinoListTile(
+                    title: const Text('Notificaciones'),
+                    trailing: CupertinoSwitch(
+                      value: _notificationsEnabled,
+                      activeColor: const Color(0xFF88D8B0), // Mint Green
+                      onChanged: (value) {
+                        setState(() {
+                          _notificationsEnabled = value;
+                        });
+                      },
+                    ),
+                  ),
+                  CupertinoListTile(
+                    title: const Text('Rol'),
+                    additionalInfo: Text(_selectedRole),
+                    // Removed trailing chevron and onTap to disable role changing
+                  ),
+                  CupertinoListTile(
+                    title: const Text('Tamaño de fuente'),
+                    subtitle: CupertinoSlider(
+                      value: _fontSize,
+                      min: 12.0,
+                      max: 24.0,
+                      activeColor: const Color(0xFF88D8B0), // Mint Green
+                      onChanged: (value) {
+                        setState(() {
+                          _fontSize = value;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton(
+                        color: const Color(0xFF88D8B0), // Mint Green
+                        disabledColor: const Color(0xFF88D8B0).withOpacity(0.5),
+                        onPressed: _isLoading ? null : _saveProfile,
+                        child: _isLoading
+                            ? const CupertinoActivityIndicator()
+                            : const Text(
+                                'Guardar',
+                                style: TextStyle(color: CupertinoColors.white),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CupertinoButton(
+                      onPressed: () {
+                        showCupertinoModalPopup(
+                          context: context,
+                          builder: (context) => CupertinoActionSheet(
+                            title: const Text('Opciones'),
+                            actions: [
+                              CupertinoActionSheetAction(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Editar Foto'),
+                              ),
+                              CupertinoActionSheetAction(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cambiar Contraseña'),
+                              ),
+                            ],
+                            cancelButton: CupertinoActionSheetAction(
+                              onPressed: () => Navigator.pop(context),
+                              isDestructiveAction: true,
+                              child: const Text('Cancelar'),
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Más Opciones',
+                        style: TextStyle(color: Color(0xFF88D8B0)),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

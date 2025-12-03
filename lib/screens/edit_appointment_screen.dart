@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/appointment_model.dart';
@@ -14,77 +14,94 @@ class EditAppointmentScreen extends StatefulWidget {
 
 class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
   late DateTime? _selectedStartTime;
-  late String _reason;
+  late TextEditingController _reasonController;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _selectedStartTime = widget.appointment.startTime;
-    _reason = widget.appointment.reason;
+    _reasonController = TextEditingController(text: widget.appointment.reason);
   }
 
-  Future<void> _selectStartTime() async {
-    final DateTime? pickedDate = await showDatePicker(
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  void _showDatePicker() {
+    showCupertinoModalPopup(
       context: context,
-      initialDate: _selectedStartTime ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
-    );
-
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(
-          _selectedStartTime ?? DateTime.now(),
+      builder: (BuildContext context) => Container(
+        height: 216,
+        padding: const EdgeInsets.only(top: 6.0),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-      );
-
-      if (pickedTime != null) {
-        setState(() {
-          _selectedStartTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-        });
-      }
-    }
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        child: SafeArea(
+          top: false,
+          child: CupertinoDatePicker(
+            initialDateTime: _selectedStartTime ?? DateTime.now(),
+            mode: CupertinoDatePickerMode.dateAndTime,
+            use24hFormat: true,
+            onDateTimeChanged: (DateTime newDate) {
+              setState(() {
+                _selectedStartTime = newDate;
+              });
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   Future<bool> _checkOverlap() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _selectedStartTime == null) return false;
 
-    final querySnapshot = await FirebaseFirestore.instance
+    // 1. Check if USER has an appointment at the same time
+    final userQuery = await FirebaseFirestore.instance
         .collection('appointments')
         .where('userId', isEqualTo: user.uid)
         .get();
 
-    for (var doc in querySnapshot.docs) {
+    for (var doc in userQuery.docs) {
       if (doc.id == widget.appointment.id) continue; // Skip current appointment
       final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
-      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!)) {
+      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
+          existingAppointment.status != 'cancelled') {
         return true;
       }
     }
+
+    // 2. Check if DOCTOR has an appointment at the same time
+    final doctorQuery = await FirebaseFirestore.instance
+        .collection('appointments')
+        .where('doctorId', isEqualTo: widget.appointment.doctorId)
+        .get();
+
+    for (var doc in doctorQuery.docs) {
+      if (doc.id == widget.appointment.id) continue; // Skip current appointment
+      final existingAppointment = AppointmentModel.fromMap(doc.data(), doc.id);
+      if (existingAppointment.startTime.isAtSameMomentAs(_selectedStartTime!) &&
+          existingAppointment.status != 'cancelled') {
+        return true;
+      }
+    }
+
     return false;
   }
 
   Future<void> _updateAppointment() async {
-    if (_selectedStartTime == null || _reason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa todos los campos')),
-      );
+    if (_selectedStartTime == null || _reasonController.text.isEmpty) {
+      _showErrorDialog('Completa todos los campos');
       return;
     }
 
     if (await _checkOverlap()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hay un conflicto con otra cita')),
-      );
+      _showErrorDialog('Hay un conflicto con otra cita');
       return;
     }
 
@@ -97,7 +114,7 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
       doctorName: widget.appointment.doctorName,
       specialty: widget.appointment.specialty,
       startTime: _selectedStartTime!,
-      reason: _reason,
+      reason: _reasonController.text,
       status: widget.appointment.status,
     );
 
@@ -106,52 +123,99 @@ class _EditAppointmentScreenState extends State<EditAppointmentScreen> {
         .doc(widget.appointment.id)
         .update(updatedAppointment.toMap());
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Cita actualizada')));
-
-    Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+    }
 
     setState(() => _isLoading = false);
   }
 
+  void _showErrorDialog(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Cita'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        foregroundColor: Colors.black87,
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Editar Cita'),
+        backgroundColor: CupertinoColors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text('Doctor: ${widget.appointment.doctorName}'),
-            Text('Especialidad: ${widget.appointment.specialty}'),
-            const SizedBox(height: 20),
-            TextField(
-              decoration: const InputDecoration(
-                labelText: 'Motivo de la consulta',
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              CupertinoListSection.insetGrouped(
+                header: const Text('Detalles de la Cita'),
+                children: [
+                  CupertinoListTile(
+                    title: const Text('Doctor'),
+                    subtitle: Text(widget.appointment.doctorName),
+                    leading: const Icon(CupertinoIcons.person_fill),
+                  ),
+                  CupertinoListTile(
+                    title: const Text('Especialidad'),
+                    subtitle: Text(widget.appointment.specialty),
+                    leading: const Icon(CupertinoIcons.star_fill),
+                  ),
+                ],
               ),
-              controller: TextEditingController(text: _reason),
-              onChanged: (value) => _reason = value,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _selectStartTime,
-              child: Text('Inicio: ${_selectedStartTime!.toLocal()}'),
-            ),
-
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _updateAppointment,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Actualizar Cita'),
-            ),
-          ],
+              const SizedBox(height: 20),
+              CupertinoTextField(
+                controller: _reasonController,
+                placeholder: 'Motivo de la consulta',
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+              ),
+              const SizedBox(height: 20),
+              CupertinoButton(
+                color: CupertinoColors.white,
+                onPressed: _showDatePicker,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Fecha y Hora',
+                      style: TextStyle(color: CupertinoColors.black),
+                    ),
+                    Text(
+                      _selectedStartTime != null
+                          ? '${_selectedStartTime!.day}/${_selectedStartTime!.month}/${_selectedStartTime!.year} ${_selectedStartTime!.hour}:${_selectedStartTime!.minute.toString().padLeft(2, '0')}'
+                          : 'Seleccionar',
+                      style: const TextStyle(color: CupertinoColors.systemGrey),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: CupertinoButton.filled(
+                  onPressed: _isLoading ? null : _updateAppointment,
+                  child: _isLoading
+                      ? const CupertinoActivityIndicator()
+                      : const Text('Actualizar Cita'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

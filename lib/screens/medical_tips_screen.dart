@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class MedicalTipsScreen extends StatelessWidget {
   const MedicalTipsScreen({super.key});
@@ -18,21 +18,36 @@ class MedicalTipsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Consejos Médicos'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        foregroundColor: Colors.black87,
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Consejos Médicos'),
+        backgroundColor: CupertinoColors.white,
       ),
-      body: ListView.builder(
-        itemCount: _tips.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: const Icon(Icons.lightbulb, color: Colors.blue),
-            title: Text(_tips[index]),
-          );
-        },
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: CupertinoListSection.insetGrouped(
+            children: _tips.map((tip) {
+              return CupertinoListTile(
+                leading: const Icon(
+                  CupertinoIcons.lightbulb_fill,
+                  color: CupertinoColors.activeBlue,
+                ),
+                title: Text(
+                  tip,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: CupertinoColors.black,
+                    inherit: false,
+                    fontFamily: '.SF Pro Text',
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }

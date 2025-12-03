@@ -1,9 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/auth_event.dart';
 import 'profile_screen.dart';
-import '../screens/appointments_screen.dart';
 import 'privacy_screen.dart';
 import 'about_screen.dart';
 
@@ -12,53 +12,113 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuración'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        foregroundColor: Colors.black87,
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.systemGroupedBackground,
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Configuración'),
+        backgroundColor: CupertinoColors.white,
       ),
-      body: ListView(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Perfil'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip),
-            title: const Text('Privacidad'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const PrivacyScreen()),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('Sobre Nosotros'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AboutScreen()),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Cerrar Sesión'),
-            onTap: () {
-              context.read<AuthBloc>().add(AuthLogoutRequested());
-            },
-          ),
-        ],
+      child: SafeArea(
+        child: Column(
+          children: [
+            CupertinoListSection.insetGrouped(
+              header: const Text('General'),
+              children: [
+                CupertinoListTile(
+                  leading: const Icon(CupertinoIcons.person),
+                  title: const Text('Perfil'),
+                  trailing: const Icon(
+                    CupertinoIcons.chevron_right,
+                    color: CupertinoColors.systemGrey3,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                ),
+                CupertinoListTile(
+                  leading: const Icon(CupertinoIcons.lock),
+                  title: const Text('Privacidad'),
+                  trailing: const Icon(
+                    CupertinoIcons.chevron_right,
+                    color: CupertinoColors.systemGrey3,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const PrivacyScreen(),
+                      ),
+                    );
+                  },
+                ),
+                CupertinoListTile(
+                  leading: const Icon(CupertinoIcons.info),
+                  title: const Text('Sobre Nosotros'),
+                  trailing: const Icon(
+                    CupertinoIcons.chevron_right,
+                    color: CupertinoColors.systemGrey3,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const AboutScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            CupertinoListSection.insetGrouped(
+              header: const Text('Cuenta'),
+              children: [
+                CupertinoListTile(
+                  leading: const Icon(
+                    CupertinoIcons.square_arrow_left,
+                    color: CupertinoColors.destructiveRed,
+                  ),
+                  title: const Text(
+                    'Cerrar Sesión',
+                    style: TextStyle(color: CupertinoColors.destructiveRed),
+                  ),
+                  onTap: () {
+                    showCupertinoDialog(
+                      context: context,
+                      builder: (context) => CupertinoAlertDialog(
+                        title: const Text('Cerrar Sesión'),
+                        content: const Text(
+                          '¿Estás seguro de que quieres cerrar sesión?',
+                        ),
+                        actions: [
+                          CupertinoDialogAction(
+                            isDefaultAction: true,
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancelar'),
+                          ),
+                          CupertinoDialogAction(
+                            isDestructiveAction: true,
+                            onPressed: () {
+                              Navigator.pop(context);
+                              context.read<AuthBloc>().add(
+                                AuthLogoutRequested(),
+                              );
+                            },
+                            child: const Text('Cerrar Sesión'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

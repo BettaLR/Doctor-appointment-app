@@ -1,14 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart'; // Add intl for date formatting
 import '../blocs/auth_bloc.dart';
-import '../blocs/auth_event.dart';
 import '../blocs/auth_state.dart';
 import '../models/user_model.dart';
-import '../models/doctor_model.dart';
-import '../services/database_service.dart';
+import '../models/appointment_model.dart'; // Import AppointmentModel
 import 'new_appointment_screen.dart';
+import 'graphics_page.dart'; // Import GraphicsPage
+import 'messages_screen.dart'; // Import MessagesScreen
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,7 +21,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  List<DoctorModel> _doctors = [];
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -34,12 +35,6 @@ class _HomePageState extends State<HomePage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _animationController.forward();
-    _doctorsStream = DatabaseService().getDoctors();
-    _doctorsStream.listen((doctors) {
-      setState(() {
-        _doctors = doctors;
-      });
-    });
   }
 
   @override
@@ -47,8 +42,6 @@ class _HomePageState extends State<HomePage>
     _animationController.dispose();
     super.dispose();
   }
-
-  late final Stream<List<DoctorModel>> _doctorsStream;
 
   @override
   Widget build(BuildContext context) {
@@ -58,312 +51,566 @@ class _HomePageState extends State<HomePage>
           Navigator.pushReplacementNamed(context, '/login');
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: FadeTransition(
+      child: CupertinoPageScaffold(
+        backgroundColor: CupertinoColors.systemGroupedBackground,
+        child: FadeTransition(
           opacity: _fadeAnimation,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome message with user name
-                StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(FirebaseAuth.instance.currentUser?.uid)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    String userName = 'Usuario';
-                    String userRole = 'Paciente';
-                    if (snapshot.hasData && snapshot.data!.exists) {
-                      final userModel = UserModel.fromMap(
-                        snapshot.data!.data() as Map<String, dynamic>,
-                        snapshot.data!.id,
-                      );
-                      userName =
-                          userModel.name ??
-                          FirebaseAuth.instance.currentUser?.email ??
-                          'Usuario';
-                      userRole = userModel.role;
-                    }
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF93C5FD), Color(0xFF60A5FA)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.medical_services,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "¡Hola, $userName!",
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const Text(
-                                  "Bienvenido a tu app de citas médicas",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Action cards based on role
-                StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(FirebaseAuth.instance.currentUser?.uid)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    String userRole = 'Paciente';
-                    if (snapshot.hasData && snapshot.data!.exists) {
-                      final userModel = UserModel.fromMap(
-                        snapshot.data!.data() as Map<String, dynamic>,
-                        snapshot.data!.id,
-                      );
-                      userRole = userModel.role;
-                    }
-                    if (userRole == 'Paciente') {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onLongPress: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Ver citas rápidas'),
-                                ),
-                              );
-                              Navigator.pushNamed(context, '/appointments');
-                            },
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pushNamed(context, '/appointments');
-                              },
-                              child: Container(
-                                width: MediaQuery.of(context).size.width * 0.4,
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today,
-                                      color: Colors.blue,
-                                      size: 28,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Mis Citas",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    } else if (userRole == 'Médico') {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onLongPress: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Ver dashboard')),
-                              );
-                              Navigator.pushNamed(context, '/dashboard');
-                            },
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pushNamed(context, '/dashboard');
-                              },
-                              child: Container(
-                                width: MediaQuery.of(context).size.width * 0.4,
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.bar_chart,
-                                      color: Colors.blue,
-                                      size: 28,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Ver Citas",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return const SizedBox.shrink();
-                    }
-                  },
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onLongPress: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Consejos médicos rápidos'),
+                    // Modern Header
+                    StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(FirebaseAuth.instance.currentUser?.uid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        String userName = 'Usuario';
+                        if (snapshot.hasData && snapshot.data!.exists) {
+                          final userModel = UserModel.fromMap(
+                            snapshot.data!.data() as Map<String, dynamic>,
+                            snapshot.data!.id,
+                          );
+                          userName =
+                              userModel.name ??
+                              FirebaseAuth.instance.currentUser?.email ??
+                              'Usuario';
+                        }
+                        return Container(
+                          padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF88D8B0), // Mint Green
+                                Color(0xFFA8E6CF), // Lighter Mint
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(30),
+                              bottomRight: Radius.circular(30),
+                            ),
                           ),
-                        );
-                        Navigator.pushNamed(context, '/medical_tips');
-                      },
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/medical_tips');
-                        },
-                        child: Container(
-                          width: MediaQuery.of(context).size.width * 0.4,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          child: Column(
                             children: [
-                              Icon(
-                                Icons.lightbulb,
-                                color: Colors.blue,
-                                size: 28,
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Hola,',
+                                        style: TextStyle(
+                                          color: CupertinoColors.white
+                                              .withOpacity(0.9),
+                                          fontSize: 18,
+                                          inherit: false,
+                                          fontFamily: '.SF Pro Text',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        userName,
+                                        style: const TextStyle(
+                                          color: CupertinoColors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          inherit: false,
+                                          fontFamily: '.SF Pro Display',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.white.withOpacity(
+                                        0.2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/settings',
+                                            ); // Navigate to settings/profile
+                                          },
+                                          child: const Icon(
+                                            CupertinoIcons.person_circle,
+                                            color: CupertinoColors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Icon(
+                                          CupertinoIcons.bell,
+                                          color: CupertinoColors.white,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 8),
-                              Text(
-                                "Consejos Médicos",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              const SizedBox(height: 24),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: CupertinoColors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.search,
+                                      color: CupertinoColors.systemGrey,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        child: Text(
+                                          'Buscar doctor o especialidad...',
+                                          style: TextStyle(
+                                            color: CupertinoColors.systemGrey,
+                                            inherit: false,
+                                            fontFamily: '.SF Pro Text',
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
+                        );
+                      },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Próxima Cita Section
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('appointments')
+                                .where(
+                                  'userId',
+                                  isEqualTo:
+                                      FirebaseAuth.instance.currentUser?.uid,
+                                )
+                                .where('status', isEqualTo: 'scheduled')
+                                .orderBy('startTime')
+                                .limit(1)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData ||
+                                  snapshot.data!.docs.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final appointment = AppointmentModel.fromMap(
+                                snapshot.data!.docs.first.data()
+                                    as Map<String, dynamic>,
+                                snapshot.data!.docs.first.id,
+                              );
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Próxima Cita',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: CupertinoColors.black,
+                                      inherit: false,
+                                      fontFamily: '.SF Pro Display',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF88D8B0,
+                                      ).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: const Color(0xFF88D8B0),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF88D8B0),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            CupertinoIcons.calendar,
+                                            color: CupertinoColors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                appointment.doctorName,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                  color: CupertinoColors.black,
+                                                  inherit: false,
+                                                  fontFamily: '.SF Pro Text',
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                DateFormat(
+                                                  'EEE, d MMM • h:mm a',
+                                                ).format(
+                                                  appointment.startTime
+                                                      .toLocal(),
+                                                ),
+                                                style: const TextStyle(
+                                                  color: CupertinoColors
+                                                      .systemGrey,
+                                                  fontSize: 14,
+                                                  inherit: false,
+                                                  fontFamily: '.SF Pro Text',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 32),
+                                ],
+                              );
+                            },
+                          ),
+                          const Text(
+                            'Acciones Rápidas',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: CupertinoColors.black,
+                              inherit: false,
+                              fontFamily: '.SF Pro Display',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(FirebaseAuth.instance.currentUser?.uid)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              bool isDoctor = false;
+                              if (snapshot.hasData && snapshot.data!.exists) {
+                                final data =
+                                    snapshot.data!.data()
+                                        as Map<String, dynamic>;
+                                isDoctor = data['role'] == 'Médico';
+                              }
+                              return Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildActionCard(
+                                    context,
+                                    icon: CupertinoIcons.calendar_badge_plus,
+                                    label: 'Agendar',
+                                    color: const Color(0xFF88D8B0),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        CupertinoPageRoute(
+                                          builder: (context) =>
+                                              const NewAppointmentScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  _buildActionCard(
+                                    context,
+                                    icon: CupertinoIcons.doc_text,
+                                    label: 'Recetas',
+                                    color: const Color(0xFFA8E6CF),
+                                    onTap: () {},
+                                  ),
+                                  _buildActionCard(
+                                    context,
+                                    icon: CupertinoIcons.chart_bar_alt_fill,
+                                    label: 'Estadísticas',
+                                    color: isDoctor
+                                        ? const Color(0xFFDCEDC8)
+                                        : CupertinoColors.systemGrey4,
+                                    onTap: () {
+                                      if (isDoctor) {
+                                        Navigator.push(
+                                          context,
+                                          CupertinoPageRoute(
+                                            builder: (context) =>
+                                                const GraphicsPage(),
+                                          ),
+                                        );
+                                      } else {
+                                        showCupertinoDialog(
+                                          context: context,
+                                          builder: (context) =>
+                                              CupertinoAlertDialog(
+                                                title: const Text(
+                                                  'Acceso Restringido',
+                                                ),
+                                                content: const Text(
+                                                  'Solo los médicos pueden acceder a las estadísticas.',
+                                                ),
+                                                actions: [
+                                                  CupertinoDialogAction(
+                                                    child: const Text('OK'),
+                                                    onPressed: () =>
+                                                        Navigator.pop(context),
+                                                  ),
+                                                ],
+                                              ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  _buildActionCard(
+                                    context,
+                                    icon: CupertinoIcons.chat_bubble_2,
+                                    label: 'Chat',
+                                    color: const Color(0xFF88D8B0),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        CupertinoPageRoute(
+                                          builder: (context) =>
+                                              const MessagesScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Doctores Populares',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: CupertinoColors.black,
+                                  inherit: false,
+                                  fontFamily: '.SF Pro Display',
+                                ),
+                              ),
+                              CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                child: const Text(
+                                  'Ver todos',
+                                  style: TextStyle(
+                                    color: Color(0xFF88D8B0), // Mint Green
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onPressed: () {},
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildDoctorCard(
+                            context,
+                            'Dr. Juan Pérez',
+                            'Cardiología',
+                            '4.8',
+                            'assets/doctor1.png',
+                          ),
+                          _buildDoctorCard(
+                            context,
+                            'Dra. María García',
+                            'Dermatología',
+                            '4.9',
+                            'assets/doctor2.png',
+                          ),
+                          _buildDoctorCard(
+                            context,
+                            'Dr. Carlos López',
+                            'Neurología',
+                            '4.7',
+                            'assets/doctor3.png',
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                // Specialists list
-                const Text(
-                  "Especialistas Disponibles",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  Widget _buildActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1), // Using color passed as argument
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: CupertinoColors.black,
+              inherit: false,
+              fontFamily: '.SF Pro Text',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoctorCard(
+    BuildContext context,
+    String name,
+    String specialty,
+    String rating,
+    String imagePath,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: CupertinoColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: const Color(
+                0xFF88D8B0,
+              ).withOpacity(0.2), // Mint Green opacity
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              CupertinoIcons.person_fill,
+              color: Color(0xFF88D8B0), // Mint Green
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: CupertinoColors.black,
+                    inherit: false,
+                    fontFamily: '.SF Pro Display',
+                  ),
                 ),
-                const SizedBox(height: 16),
-                StreamBuilder<List<DoctorModel>>(
-                  stream: _doctorsStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return const Center(
-                        child: Text('Error al cargar doctores'),
-                      );
-                    }
-
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    return ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _doctors.length,
-                      onReorder: (oldIndex, newIndex) {
-                        setState(() {
-                          final item = _doctors.removeAt(oldIndex);
-                          _doctors.insert(
-                            newIndex > oldIndex ? newIndex - 1 : newIndex,
-                            item,
-                          );
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final doctor = _doctors[index];
-                        return Card(
-                          key: ValueKey(doctor.id),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(Icons.person, color: Colors.blue),
-                            title: Text(doctor.name),
-                            subtitle: Text(doctor.specialty),
-                            trailing: Icon(
-                              Icons.drag_handle,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => NewAppointmentScreen(
-                                    selectedDoctorId: doctor.id,
-                                    selectedDoctorName: doctor.name,
-                                    selectedSpecialty: doctor.specialty,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
+                const SizedBox(height: 4),
+                Text(
+                  specialty,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: CupertinoColors.systemGrey,
+                    inherit: false,
+                    fontFamily: '.SF Pro Text',
+                  ),
                 ),
               ],
             ),
           ),
-        ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF9C4), // Light yellow for rating
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.star_fill,
+                  color: Color(0xFFFFB300), // Amber
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  rating,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFB300),
+                    inherit: false,
+                    fontFamily: '.SF Pro Text',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

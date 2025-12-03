@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,16 +16,53 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   String _selectedRole = 'Paciente'; // Default role
 
+  void _register() {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      _showErrorDialog('Por favor complete todos los campos');
+      return;
+    }
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(emailController.text)) {
+      _showErrorDialog('Correo electrónico no válido');
+      return;
+    }
+    if (passwordController.text.length < 6) {
+      _showErrorDialog('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    context.read<AuthBloc>().add(
+      AuthRegisterRequested(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Crear Cuenta")),
-      body: BlocListener<AuthBloc, AuthState>(
+    return CupertinoPageScaffold(
+      backgroundColor: CupertinoColors.white,
+      child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) async {
           if (state is AuthAuthenticated) {
             // Create user document in Firestore
@@ -47,128 +84,210 @@ class _RegisterScreenState extends State<RegisterScreen> {
               }
             }
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Cuenta creada exitosamente")),
+            // ignore: use_build_context_synchronously
+            showCupertinoDialog(
+              context: context,
+              builder: (context) => CupertinoAlertDialog(
+                title: const Text('Éxito'),
+                content: const Text('Cuenta creada exitosamente'),
+                actions: [
+                  CupertinoDialogAction(
+                    child: const Text('OK'),
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pushReplacementNamed(context, '/home');
+                    },
+                  ),
+                ],
+              ),
             );
-            Navigator.pushReplacementNamed(context, '/home');
           } else if (state is AuthError) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
+            _showErrorDialog(state.message);
           }
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Center(
-            child: Card(
-              elevation: 8,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
+          child: Column(
+            children: [
+              // Header with Gradient and Logo
+              Container(
+                height: 250,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(60),
+                    bottomRight: Radius.circular(60),
+                  ),
+                ),
+                child: Center(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.person_add,
-                        size: 80,
-                        color: Colors.blue,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.person_add_solid,
+                          size: 60,
+                          color: CupertinoColors.white,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        'Crear Nueva Cuenta',
+                        'Únete a MediApp',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
+                          color: CupertinoColors.white,
+                          letterSpacing: 1.2,
+                          inherit: false,
+                          fontFamily: '.SF Pro Display',
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Correo Electrónico',
-                          prefixIcon: Icon(Icons.email),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor ingrese su correo electrónico';
-                          }
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Correo no válido';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: passwordController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contraseña',
-                          prefixIcon: Icon(Icons.lock),
-                          border: OutlineInputBorder(),
-                        ),
-                        obscureText: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Por favor ingrese su contraseña";
-                          }
-                          if (value.length < 6) {
-                            return 'La contraseña debe tener al menos 6 caracteres';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _selectedRole,
-                        decoration: const InputDecoration(
-                          labelText: 'Rol',
-                          prefixIcon: Icon(Icons.person),
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'Paciente',
-                            child: Text('Paciente'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Médico',
-                            child: Text('Médico'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedRole = value!;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      BlocBuilder<AuthBloc, AuthState>(
-                        builder: (context, state) {
-                          if (state is AuthLoading) {
-                            return const CircularProgressIndicator();
-                          }
-                          return ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                context.read<AuthBloc>().add(
-                                  AuthRegisterRequested(
-                                    emailController.text.trim(),
-                                    passwordController.text.trim(),
-                                  ),
-                                );
-                              }
-                            },
-                            child: const Text('Crear Cuenta'),
-                          );
-                        },
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 40),
+
+              // Register Form
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Crea tu cuenta',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: CupertinoColors.black,
+                        inherit: false,
+                        fontFamily: '.SF Pro Display',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 30),
+                    CupertinoTextField(
+                      controller: emailController,
+                      placeholder: 'Correo Electrónico',
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 12),
+                        child: Icon(
+                          CupertinoIcons.mail,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemGrey6,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    CupertinoTextField(
+                      controller: passwordController,
+                      placeholder: 'Contraseña',
+                      obscureText: true,
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 12),
+                        child: Icon(
+                          CupertinoIcons.lock,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemGrey6,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Role Selection
+                    SizedBox(
+                      width: double.infinity,
+                      child: CupertinoSlidingSegmentedControl<String>(
+                        groupValue: _selectedRole,
+                        children: const {
+                          'Paciente': Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Text('Paciente'),
+                          ),
+                          'Médico': Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Text('Médico'),
+                          ),
+                        },
+                        onValueChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedRole = value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, state) {
+                        if (state is AuthLoading) {
+                          return const Center(
+                            child: CupertinoActivityIndicator(),
+                          );
+                        }
+                        return CupertinoButton.filled(
+                          onPressed: _register,
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Text(
+                            'REGISTRARSE',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          '¿Ya tienes cuenta?',
+                          style: TextStyle(
+                            color: CupertinoColors.systemGrey,
+                            inherit: false,
+                            fontFamily: '.SF Pro Text',
+                          ),
+                        ),
+                        CupertinoButton(
+                          padding: const EdgeInsets.only(left: 4),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            'Inicia Sesión',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: CupertinoColors.activeBlue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
